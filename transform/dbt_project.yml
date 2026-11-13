@@ -1,0 +1,13 @@
+name: autobahn
+version: "1.0.0"
+profile: autobahn
+
+model-paths: ["models"]
+test-paths: ["tests"]
+
+models:
+  autobahn:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table

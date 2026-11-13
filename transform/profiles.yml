@@ -1,0 +1,8 @@
+# dbt connection settings. The database file is created by pipeline/load.py.
+autobahn:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../data/autobahn.duckdb
+      threads: 1

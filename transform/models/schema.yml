@@ -1,0 +1,29 @@
+version: 2
+
+models:
+  - name: stg_events
+    description: Cleaned event snapshots with an OWL region flag.
+    columns:
+      - name: event_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [roadworks, warning, closure]
+      - name: road
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [A2, A30, A33, A44]
+
+  - name: fct_events
+    description: One row per event in Ostwestfalen-Lippe, with first and last time seen.
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - name: first_seen_at
+        data_tests: [not_null]
+      - name: road
+        data_tests: [not_null]
+
+  - name: agg_stretch_summary
+    description: Counts of roadworks, closures and warnings per road stretch and direction.
