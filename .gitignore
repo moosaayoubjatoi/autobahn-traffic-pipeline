@@ -8,3 +8,4 @@ transform/target/
 transform/logs/
 transform/dbt_packages/
 logs/
+transform/.user.yml
