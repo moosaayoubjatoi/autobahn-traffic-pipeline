@@ -14,10 +14,14 @@ select
 
     -- Roadworks/warnings: title looks like "A2 | Bielefeld-Ost - Herford" -> keep the part after "|".
     -- Closures often have free text like "Fahrbahninstandsetzung" -> keep the whole title.
-    case
-        when title like '%|%' then trim(split_part(title, '|', 2))
-        else trim(title)
-    end                                            as stretch,
+    -- Closure titles often repeat the road ("A44 - Sanierung ..."): drop that prefix.
+    regexp_replace(
+        case
+            when title like '%|%' then trim(split_part(title, '|', 2))
+            else trim(title)
+        end,
+        '^A[0-9]+\s*-\s*', ''
+    )                                              as stretch,
     -- subtitle: a direction ("Dortmund -> Hannover") or a junction ("AS Büren (aus Richtung ...)")
     nullif(trim(subtitle), '')                     as direction,
 
@@ -35,8 +39,8 @@ select
     --   south: Paderborn/Höxter
     -- Excludes Osnabrück, Soest and Hannover region. Border towns can still slip in.
     coalesce(
-        (lat between 51.90 and 52.55 and lng between 8.15 and 9.05)
-        or (lat between 51.45 and 51.90 and lng between 8.25 and 9.50),
+        (lat between 51.90 and 52.55 and lng between 8.30 and 9.05)
+        or (lat between 51.45 and 51.90 and lng between 8.50 and 9.50),
         false
     )                                              as is_in_owl
 

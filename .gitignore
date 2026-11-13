@@ -9,3 +9,4 @@ transform/logs/
 transform/dbt_packages/
 logs/
 transform/.user.yml
+data/raw/20*/
