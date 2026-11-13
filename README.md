@@ -50,12 +50,20 @@ streamlit run dashboard/app.py   # open the dashboard at http://localhost:8501
 No API key or registration needed. The steps can also run one at a time:
 `python -m pipeline.extract`, `python -m pipeline.load`, and `dbt build --profiles-dir .` inside `transform/`.
 
+## Scheduling and hosting
+
+- `.github/workflows/pipeline.yml` runs unit tests and `python -m pipeline.run` every 3 hours on GitHub Actions.
+- The database is stored on a separate `data` branch (one file, replaced each run), so the main branch stays small.
+- The online dashboard downloads that file; locally it uses `data/autobahn.duckdb`.
+- If a data test fails, the run fails and GitHub notifies the repo owner.
+
 ## Design notes
 
 - **Raw data is kept unchanged**, so the models can be rebuilt from scratch at any time.
 - **Idempotent load:** a `loaded_files` table records every file loaded, so reruns add no duplicates.
 - **OWL filter is approximate:** two latitude/longitude boxes, defined in `stg_events.sql`.
   Places just over the border (e.g. Melle) can still be included.
+- **Raw layer on GitHub Actions:** the raw JSON files are loaded into `raw_events` (which keeps every field used); the files themselves are only kept locally.
 - **Durations depend on run frequency:** `first_seen_at` / `last_seen_at` are only as precise as the schedule.
 
 ## Roadmap
@@ -63,7 +71,8 @@ No API key or registration needed. The steps can also run one at a time:
 - [x] Extract raw JSON from the API
 - [x] Idempotent load into DuckDB
 - [x] dbt models: staging, OWL filter, one row per event, stretch summary, data tests
-- [ ] Scheduled runs with GitHub Actions
+- [x] Scheduled runs with GitHub Actions (every 3 hours; workflow ready, starts once the repo is on GitHub)
+- [ ] Dashboard online on Streamlit Community Cloud
 - [x] Streamlit dashboard: KPIs, map, top stretches, events per run
 
 ## Data source

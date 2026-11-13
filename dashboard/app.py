@@ -4,14 +4,36 @@ Reads the dbt tables from data/autobahn.duckdb (read-only).
 Run: streamlit run dashboard/app.py
 """
 
+import tempfile
 from pathlib import Path
 
 import altair as alt
 import duckdb
 import pandas as pd
+import requests
 import streamlit as st
 
-DB_PATH = Path(__file__).resolve().parent.parent / "data" / "autobahn.duckdb"
+LOCAL_DB = Path(__file__).resolve().parent.parent / "data" / "autobahn.duckdb"
+# Online (Streamlit Cloud) there is no local database: download the one that
+# GitHub Actions keeps on the "data" branch.
+DATA_URL = "https://raw.githubusercontent.com/moosaayoubjatoi/autobahn-traffic-pipeline/data/autobahn.duckdb"
+
+
+@st.cache_resource(ttl=600)
+def get_db_path() -> Path | None:
+    if LOCAL_DB.exists():
+        return LOCAL_DB
+    try:
+        response = requests.get(DATA_URL, timeout=60)
+        response.raise_for_status()
+    except requests.RequestException:
+        return None
+    path = Path(tempfile.gettempdir()) / "autobahn.duckdb"
+    path.write_bytes(response.content)
+    return path
+
+
+DB_PATH = get_db_path()
 
 # One fixed colour per event type (validated colour-blind-safe set), so a type keeps
 # its colour whatever the filters show.
@@ -28,8 +50,8 @@ def query(sql: str) -> pd.DataFrame:
         return con.execute(sql).df()
 
 
-if not DB_PATH.exists():
-    st.error("No database yet. Run `python -m pipeline.run` first.")
+if DB_PATH is None:
+    st.error("No data yet. Locally: run `python -m pipeline.run`. Online: wait for the first scheduled run.")
     st.stop()
 
 events = query("select * from fct_events")
@@ -101,7 +123,7 @@ with right:
         )
         .properties(height=360)
     )
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(chart, width="stretch")
 
 # ---------- Over time ----------
 st.subheader("Active events per pipeline run")
@@ -121,7 +143,7 @@ else:
         )
         .properties(height=280)
     )
-    st.altair_chart(line, use_container_width=True)
+    st.altair_chart(line, width="stretch")
 
 # ---------- Table ----------
 st.subheader("All events")
@@ -130,7 +152,7 @@ st.dataframe(
         ["road", "type", "stretch", "direction", "first_seen_at", "last_seen_at", "max_delay_minutes", "was_blocked"]
     ],
     hide_index=True,
-    use_container_width=True,
+    width="stretch",
     column_config={
         "road": "Road", "type": "Type", "stretch": "Stretch", "direction": "Direction / junction",
         "first_seen_at": st.column_config.DatetimeColumn("First seen", format="DD.MM.YY HH:mm"),
