@@ -6,7 +6,9 @@ around Ostwestfalen-Lippe (A2, A30, A33, A44), stores every snapshot, and models
 Questions it answers: Which stretches have the most roadworks and closures? How long do
 roadworks last? When do traffic jams happen and how long are the delays?
 
-**Status:** work in progress. Extract, load, dbt modelling and the dashboard are done.
+**Live dashboard:** https://autobahn-owl.streamlit.app (data refreshed every 3 hours by GitHub Actions)
+
+**Status:** running. Extract, load, dbt modelling, dashboard and scheduling are done.
 
 ![Dashboard](docs/dashboard.jpg)
 
@@ -71,8 +73,8 @@ No API key or registration needed. The steps can also run one at a time:
 - [x] Extract raw JSON from the API
 - [x] Idempotent load into DuckDB
 - [x] dbt models: staging, OWL filter, one row per event, stretch summary, data tests
-- [x] Scheduled runs with GitHub Actions (every 3 hours; workflow ready, starts once the repo is on GitHub)
-- [ ] Dashboard online on Streamlit Community Cloud
+- [x] Scheduled runs with GitHub Actions (every 3 hours)
+- [x] Dashboard online on Streamlit Community Cloud
 - [x] Streamlit dashboard: KPIs, map, top stretches, events per run
 
 ## Data source
