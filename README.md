@@ -8,6 +8,8 @@ roadworks last? When do traffic jams happen and how long are the delays?
 
 **Live dashboard:** https://autobahn-owl.streamlit.app (data refreshed every 3 hours by GitHub Actions)
 
+**Full beginner-friendly guide (PDF):** [docs/Project_Guide.pdf](docs/Project_Guide.pdf)
+
 **Status:** running. Extract, load, dbt modelling, dashboard and scheduling are done.
 
 ![Dashboard](docs/dashboard.jpg)
