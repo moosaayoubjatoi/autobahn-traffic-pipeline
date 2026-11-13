@@ -6,35 +6,48 @@ import duckdb
 
 from pipeline import extract, load
 
-FAKE_RESPONSE = {
-    "ok": True,
-    "status": "ok",
-    "stations": [
-        {"id": "a1", "name": "Station A", "brand": "Shell", "street": "Bruchweg", "houseNumber": "48",
-         "postCode": 32657, "place": "Lemgo", "lat": 52.03, "lng": 8.90,
-         "diesel": 1.659, "e5": 1.799, "e10": 1.739, "isOpen": True},
-        {"id": "b2", "name": "Station B", "brand": "ARAL", "street": "Hauptstr.", "houseNumber": "1",
-         "postCode": 32657, "place": "Lemgo", "lat": 52.02, "lng": 8.91,
-         "diesel": False, "e5": 1.819, "e10": None, "isOpen": False},
-    ],
+FAKE_WARNINGS = {
+    "warning": [
+        {"identifier": "w1", "display_type": "WARNING", "title": "A2 | Bielefeld-Ost - Herford ",
+         "subtitle": " Dortmund -> Hannover", "isBlocked": "false", "future": False,
+         "coordinate": {"lat": "52.05", "long": "8.62"}, "startTimestamp": "2026-11-13T07:30:00Z",
+         "delayTimeValue": "15", "abnormalTrafficType": "SLOW_TRAFFIC",
+         "description": ["Beginn: 13.11.26 um 08:30 Uhr", "Stockender Verkehr"]},
+        {"identifier": "w2", "display_type": "WARNING", "title": "A2 | Rehren - Bad Eilsen",
+         "isBlocked": "true", "coordinate": {}, "description": []},
+    ]
 }
 
 
-def make_raw_file(tmp_path, city="lemgo"):
+def make_raw_file(tmp_path):
     fetched_at = datetime(2026, 11, 13, 12, 0, tzinfo=timezone.utc)
-    return extract.save_raw(FAKE_RESPONSE, city, fetched_at, raw_dir=tmp_path)
+    return extract.save_raw(FAKE_WARNINGS, "A2", "warning", fetched_at, raw_dir=tmp_path)
 
 
 def test_save_raw_writes_dated_file(tmp_path):
     path = make_raw_file(tmp_path)
     assert path.parent.name == "2026-11-13"
-    assert path.name == "lemgo_120000.json"
+    assert path.name == "A2_warning_120000.json"
 
 
-def test_to_price_turns_false_and_none_into_null():
-    assert load.to_price(1.659) == 1.659
-    assert load.to_price(False) is None
-    assert load.to_price(None) is None
+def test_to_bool_handles_strings_and_booleans():
+    assert load.to_bool("true") is True
+    assert load.to_bool("false") is False
+    assert load.to_bool(True) is True
+    assert load.to_bool(None) is None
+
+
+def test_parse_event_cleans_fields():
+    row = load.parse_event(FAKE_WARNINGS["warning"][0])
+    assert row["title"] == "A2 | Bielefeld-Ost - Herford"
+    assert row["delay_minutes"] == 15
+    assert row["lat"] == 52.05
+    assert row["description"] == "Beginn: 13.11.26 um 08:30 Uhr\nStockender Verkehr"
+
+    sparse = load.parse_event(FAKE_WARNINGS["warning"][1])
+    assert sparse["lat"] is None
+    assert sparse["delay_minutes"] is None
+    assert sparse["is_blocked"] is True
 
 
 def test_load_is_idempotent(tmp_path):
@@ -45,7 +58,5 @@ def test_load_is_idempotent(tmp_path):
     assert load.run(db_path=db, raw_dir=tmp_path) == 0  # second run loads nothing
 
     con = duckdb.connect(str(db))
-    assert con.execute("SELECT count(*) FROM raw_prices").fetchone()[0] == 2
-    diesel_b2 = con.execute("SELECT diesel FROM raw_prices WHERE station_id = 'b2'").fetchone()[0]
-    assert diesel_b2 is None
+    assert con.execute("SELECT count(*) FROM raw_events").fetchone()[0] == 2
     con.close()

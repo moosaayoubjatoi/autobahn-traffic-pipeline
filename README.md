@@ -1,23 +1,29 @@
-# Fuel Price Pipeline (Ostwestfalen-Lippe)
+# Autobahn Traffic Pipeline (Ostwestfalen-Lippe)
 
-A small batch data pipeline that collects fuel prices (diesel, E5, E10) from petrol stations in
-Lemgo, Detmold, Bielefeld and Paderborn and stores them for analysis.
+A batch data pipeline that collects roadworks, traffic warnings and closures on the autobahns
+around Ostwestfalen-Lippe (A2, A30, A33, A44) and stores every snapshot for analysis.
+
+Questions it will answer: Which stretches are closed most often? How long do roadworks last?
+When do traffic jams happen and how long are the delays?
 
 **Status:** work in progress. Step 1 (extract + load) is done.
 
 ## How it works
 
 ```
-Tankerkönig API ──► extract.py ──► data/raw/*.json ──► load.py ──► DuckDB (raw_stations, raw_prices)
-                                                                      │
-                                                         dbt models (planned) ──► dashboard (planned)
+Autobahn API ──► extract.py ──► data/raw/*.json ──► load.py ──► DuckDB (raw_events)
+                                                                   │
+                                                      dbt models (planned) ──► dashboard (planned)
 ```
 
 | Step | What it does | Tools |
 |---|---|---|
-| Extract | Calls the API for 4 cities (5 km radius each) and saves the response unchanged | Python, requests |
-| Load | Reads all raw files into DuckDB; files already loaded are skipped (idempotent) | DuckDB, SQL |
+| Extract | Calls the API for 4 roads × 3 event types and saves each response unchanged | Python, requests |
+| Load | Reads all raw files into DuckDB, one row per event per run; files already loaded are skipped (idempotent) | DuckDB, SQL |
 | Test | Unit tests with a fake API response, no internet needed | pytest |
+
+Each run is a snapshot. Running the pipeline repeatedly shows when an event first appeared
+and when it disappeared, which gives its duration.
 
 ## Run it
 
@@ -26,24 +32,21 @@ python -m venv .venv
 .venv/Scripts/activate        # Windows; on Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
 
-python -m pipeline.extract    # fetch prices
-python -m pipeline.load       # load into data/fuel_prices.duckdb
+python -m pipeline.extract    # fetch current events
+python -m pipeline.load       # load into data/autobahn.duckdb
 python -m pytest              # run tests
 ```
 
-Without an API key the public demo key is used: station data is real, prices are placeholders.
-For real prices, get a free key at <https://creativecommons.tankerkoenig.de> and set
-`TANKERKOENIG_API_KEY` as an environment variable.
+No API key or registration needed.
 
 ## Roadmap
 
 - [x] Extract raw JSON from the API
 - [x] Idempotent load into DuckDB
-- [ ] dbt models: staging, cleaned prices, daily price per city and brand, data quality tests
+- [ ] dbt models: staging, OWL region filter, one row per event with first/last seen, data quality tests
 - [ ] Scheduled runs with GitHub Actions
-- [ ] Streamlit dashboard: cheapest time of day, brand comparison
+- [ ] Streamlit dashboard: closures per stretch, roadworks duration, delays by hour
 
 ## Data source
 
-Fuel price data: [Tankerkönig](https://creativecommons.tankerkoenig.de), based on MTS-K data,
-licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+[Autobahn GmbH des Bundes](https://verkehr.autobahn.de/o/autobahn) public traffic API.
