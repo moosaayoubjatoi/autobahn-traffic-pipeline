@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 API_URL = "https://verkehr.autobahn.de/o/autobahn/{road}/services/{event_type}"
 
@@ -21,9 +23,25 @@ EVENT_TYPES = ["roadworks", "warning", "closure"]
 RAW_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
 
 
+def make_session() -> requests.Session:
+    """HTTP session that retries temporary server errors (e.g. a 502 from the API proxy).
+
+    Up to 4 retries with waits of 2, 4, 8, 16 s. A road/type that still fails after that
+    stops the run on purpose: skipping it would make its events look finished in fct_events.
+    """
+    retry = Retry(total=4, backoff_factor=2, status_forcelist=[429, 500, 502, 503, 504],
+                  allowed_methods=["GET"])
+    session = requests.Session()
+    session.mount("https://", HTTPAdapter(max_retries=retry))
+    return session
+
+
+SESSION = make_session()
+
+
 def fetch_events(road: str, event_type: str) -> dict:
-    """Call the API once and return the parsed JSON. Raises on HTTP errors."""
-    response = requests.get(API_URL.format(road=road, event_type=event_type), timeout=30)
+    """Call the API (with retries) and return the parsed JSON. Raises on HTTP errors."""
+    response = SESSION.get(API_URL.format(road=road, event_type=event_type), timeout=30)
     response.raise_for_status()
     return response.json()
 
